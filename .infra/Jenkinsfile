@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+
+ 
+
+    parameters{
+        
+        string(name: 'Github_Username', defaultValue:'tavisca-rpandey')
+
+ 
+
+        string (name: 'Branch_name' , defaultValue: 'master')
+
+ 
+
+        string(name: 'Repositery_name', defaultValue: 'WebApi')
+
+ 
+
+        string (name: 'Solution_file',defaultValue: 'MyAPI')
+
+ 
+
+        
+
+ 
+
+        
+
+ 
+
+        string (name: 'Docker_Image', defaultValue: 'webapp')
+
+ 
+
+        
+        
+    }
+
+ 
+
+    stages{     
+    
+        
+        stage('clone'){
+            steps{                
+                git branch: '${Branch_name}', url: 'https://github.com/${Github_Username}/${Repositery_name}.git'
+              }
+        }
+
+ 
+
+        stage('build'){
+            steps{
+                  bat 'dotnet build %Solution_file%.sln -p:Configuration=release -v:q'
+                 }
+         }
+
+ 
+
+        stage('Test'){
+            steps{
+                bat 'dotnet test %Solution_file%.sln'
+            }
+        }
+        stage('publish'){
+            steps{
+                bat 'dotnet publish %Solution_file%.sln' 
+            }
+        }
+        stage('Docker_build'){
+            steps{
+                 bat "docker build -t ${Docker_Image} -f Dockerfile ."
+            }
+        }
+        
+        stage('Docker_Publish'){
+            steps{
+            script{
+                 docker.withRegistry('https://index.docker.io/v1/','docker-hub-credentials'){
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'pass', usernameVariable: 'user')]) {
+                      bat "docker tag ${Docker_Image} ${user}/${Docker_Image}"
+                      bat "docker push ${user}/${Docker_Image}"
+ 
+                     }
+ 
+                   }
+               }
+            }
+        
+        }
+        
+    }
+}
